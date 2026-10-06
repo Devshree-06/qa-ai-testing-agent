@@ -21,11 +21,14 @@ class JestAdapter(TestFramework):
             "**/*.spec.ts"
         ]:
 
-            test_file.extend(project_dir.rglob(pattern))
+            test_file.extend(path for path in project_dir.rglob(pattern) 
+                             if "node_modules" not in path.parts)
 
-            return [
-                str(path.relative_to(project_dir)) for path in test_file
-            ]
+        return [
+                        str(path.relative_to(project_dir)) for path in test_file
+                    ]
+
+            
     
 
     def run_test(self,project_path, test_path) -> dict:

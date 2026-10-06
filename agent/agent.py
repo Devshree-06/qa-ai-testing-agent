@@ -22,7 +22,7 @@ load_dotenv()
 
 
 llm = ChatGroq(
-    model="qwen/qwen3.6-27b",
+    model="qwen/qwen3.8-27b",
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0,
     max_tokens=1000
@@ -69,7 +69,8 @@ using the detected framework and project path.
 5. Analyze the failures.
 6. If you identify a safe fix, call apply_patch
 7. After apply_patch succeeds, call run test again.
-8. Only finish after the test passes or no safe fix can be identified.
+8. Go through all the test files in all folders to identify different frameworks.
+9. Only finish after the test passes or no safe fix can be identified.
 
 Important:
 - Do not stop after discover_framework.

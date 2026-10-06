@@ -3,6 +3,7 @@ from frameworks.jest_adapter import JestAdapter
 
 class FactoryFramework:
 
+    @staticmethod
     def getAdapter(framework:str):
         if framework == "pytest":
             return PytestAdapter()

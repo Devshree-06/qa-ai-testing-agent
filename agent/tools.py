@@ -6,35 +6,53 @@ from pathlib import Path
 
 from frameworks.factory import FactoryFramework
 
+import json
+
 @tool
 def discover_framework(project_path: str):
 
    """Detect which test framework is used by the project"""
 
-   project_dir = Path(project_path).resolve()
+   workspace_dir = Path(project_path).resolve()
 
-   if (project_dir/"package.json").exists():
+   projects = []
 
-      package_json = (project_dir/"package.json").read_text(
-         encoding="utf-8"
-      )
+   print("Workspace directory fetched : " + str(workspace_dir))
 
-      if "jest" in package_json:
-         print("jest package found")
-         return "jest"
-      
+   for project_dir in workspace_dir.iterdir():
+      if not project_dir.iterdir():
+         continue
 
-   if (project_dir/"pyproject.toml").exists():
+      framework = None
 
-      content = (project_dir/"pyproject.toml").read_text(
-         encoding="utf-8"
-      )
+      print("Project directory fetched : " + str(project_dir))
 
-      if "pytest" in content:
-         print("python package found")
-         return "pytest"
+      package_json_path = project_dir/"package.json"
 
-   return "unknown"
+      if (package_json_path).exists():
+
+         package_json = json.loads(package_json_path.read_text(encoding="utf-8"))
+
+         dependencies = package_json.get("dependences",{})
+
+         dev_dependencies = package_json.get("devDependencies",{})
+
+         if "jest" in dependencies or "jest" in dev_dependencies:
+            framework =  "jest"
+ 
+      if (project_dir/"pytest.ini").exists():
+
+               print("python package found")
+               framework =  "pytest"
+
+      if framework:
+         projects.append({
+         "project_path" : str(project_dir),
+         "framework"  : framework
+      })
+
+   print("Th projects returned : " , projects)
+   return json.dumps(projects)
 
 
 @tool
@@ -66,6 +84,25 @@ def read_test_file(framework :str,project_path:str,test_path:str) -> str:
    return json.dumps(result)
 
 
+def safe_apply_patch(file_path:str) -> bool:
+
+   print("Calling the safe apply patch method")
+
+   path = Path(file_path)
+
+   if "tests" in path.parts:
+      return True
+
+   if path.name.startswith("test_"):
+      return True
+
+   if path.name.endswith("_test.py"):
+      return True
+
+
+   return False
+
+
 @tool
 def apply_patch(project_path: str,file_path:str,old_content:str,new_content: str):
     """
@@ -81,6 +118,9 @@ def apply_patch(project_path: str,file_path:str,old_content:str,new_content: str
     project_dir = Path(project_path).resolve()
 
     target_file = (project_dir / file_path).resolve()
+
+    if not safe_apply_patch(file_path):
+       return "`BLOCKED: Automatic patching not allowed for this file."
 
 
     if not target_file.is_relative_to(project_dir):
