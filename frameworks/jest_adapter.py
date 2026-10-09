@@ -46,17 +46,33 @@ class JestAdapter(TestFramework):
                 "stderr" : "npx.cmd not found"
             }
 
-        result = subprocess.run(
-            [npx,"jest",test_path],
-            cwd=project_dir,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace"
-        )
+        local_jest = project_dir / "node_modules" / "jest" / "bin" / "jest.js"
+        if not local_jest.exists():
+            return {
+                "exit_code": 1,
+                "stdout": "",
+                "stderr": "Local Jest installation not found; refusing to fetch packages during validation.",
+            }
+
+        try:
+            result = subprocess.run(
+                [npx,"jest",test_path],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "exit_code": 124,
+                "stdout": "",
+                "stderr": "Test execution exceeded the 120-second timeout.",
+            }
 
         return {
-            "exit" : result.returncode,
+            "exit_code" : result.returncode,
             "stdout" : result.stdout,
             "stderr" : result.stderr
         }
@@ -66,7 +82,7 @@ class JestAdapter(TestFramework):
 
         test_file = project_dir / test_path
 
-        if not test_file.exists:
+        if not test_file.exists():
             return f"Test file '{test_file}' does not exist"
 
         return test_file.read_text(encoding="utf-8")

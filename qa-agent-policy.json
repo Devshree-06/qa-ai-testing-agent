@@ -1,0 +1,12 @@
+{
+  "normal_bug_paths": [
+    "src/**",
+    "app/**",
+    "services/**"
+  ],
+  "business_requirement_paths": [
+    "billing/**",
+    "pricing/**",
+    "orders/**"
+  ]
+}

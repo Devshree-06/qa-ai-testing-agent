@@ -1,8 +1,14 @@
 
 from typing import TypedDict
 
-from langgraph.graph import MessagesState
 
-class AgentState(MessagesState):
-    project_path:str
-    framework: str
+class AgentState(TypedDict, total=False):
+    project_path: str
+    framework_results: list[dict]
+    failed_tests: list[dict]
+    status: str
+    summary: str
+    proposal: dict[str, str] | None
+    decisions: list[dict]
+    message: str
+    result: str

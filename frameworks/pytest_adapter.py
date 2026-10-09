@@ -30,23 +30,32 @@ class PytestAdapter(TestFramework):
 
         test_file = project_dir / test_path
 
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pytest",
-                str(test_file)
-            ],
-            cwd = project_dir,
-            capture_output=True,
-            text=True
-        )
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    str(test_file)
+                ],
+                cwd = project_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "exit_code": 124,
+                "stdout": "",
+                "stderr": "Test execution exceeded the 120-second timeout.",
+            }
 
         return {
             "exit_code" : result.returncode,
             "stdout" : result.stdout,
             "stderr" : result.stderr
         }
+        
 
 
     def read_test_file(self, project_path:str, test_path:str) -> str:
