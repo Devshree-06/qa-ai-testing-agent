@@ -4,6 +4,7 @@ import subprocess
 import shutil
 
 from frameworks.base import TestFramework
+from frameworks.process_environment import build_test_environment
 
 
 class JestAdapter(TestFramework):
@@ -58,6 +59,7 @@ class JestAdapter(TestFramework):
             result = subprocess.run(
                 [npx,"jest",test_path],
                 cwd=project_dir,
+                env=build_test_environment(),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",

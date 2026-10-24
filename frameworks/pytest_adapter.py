@@ -5,6 +5,7 @@ import sys
 import subprocess
 
 from frameworks.base import TestFramework
+from frameworks.process_environment import build_test_environment
 
 
 class PytestAdapter(TestFramework):
@@ -39,6 +40,7 @@ class PytestAdapter(TestFramework):
                     str(test_file)
                 ],
                 cwd = project_dir,
+                env=build_test_environment(),
                 capture_output=True,
                 text=True,
                 timeout=120,

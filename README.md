@@ -49,6 +49,8 @@ python -m app.app --project-path path\to\project
 
 The agent prints a JSON result. When a validated patch is proposed, it displays a unified diff and asks for explicit approval before applying it. Projects can use pytest or Jest. Jest projects need a local Jest installation in that project; the agent does not download packages while validating. A Groq key is only needed if test failures need LLM analysis.
 
+Test subprocesses receive only the operating-system runtime variables they need by default, not the full agent environment. To pass approved non-secret values to tests, set `QA_AGENT_TEST_ENV_ALLOWLIST` in the trusted agent environment to a comma-separated list of variable names. Never allowlist credentials. This reduces accidental secret exposure but is not process or filesystem isolation; use containers for untrusted projects.
+
 For automatic proposal validation, add a `qa-agent-policy.json` to the target project with path globs under `normal_bug_paths` and `business_requirement_paths`. The bundled demo policy is an example. Unclassified paths are suggestion-only, and business-sensitive proposals always require owner approval.
 
 ## Tests
