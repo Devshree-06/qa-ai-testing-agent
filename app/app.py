@@ -17,13 +17,29 @@ def main() -> None:
         default=str(REPOSITORY_ROOT / "workspace" / "demo-project"),
         help="Project directory to inspect (defaults to the Python demo project).",
     )
+    parser.add_argument(
+        "--environment",
+        choices=("uat", "production"),
+        default="uat",
+        help="Execution environment (production execution is disabled).",
+    )
     args = parser.parse_args()
 
+    if args.environment == "production":
+        parser.error("Production execution is disabled; select a UAT project instead.")
+
+    load_dotenv(REPOSITORY_ROOT / ".env")
+
+    configured_uat_root = Path(
+        os.getenv("QA_AGENT_UAT_ROOT", str(REPOSITORY_ROOT / "workspace"))
+    ).expanduser().resolve()
     project_path = Path(args.project_path).resolve()
     if not project_path.is_dir():
         parser.error(f"Project directory does not exist: {project_path}")
-
-    load_dotenv(REPOSITORY_ROOT / ".env")
+    try:
+        project_path.relative_to(configured_uat_root)
+    except ValueError:
+        parser.error(f"UAT project must be inside the configured UAT root: {configured_uat_root}")
 
     from agent.agent import run_agent
     from agent.guardrails import PatchProposal, apply_approved_patch

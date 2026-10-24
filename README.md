@@ -35,6 +35,12 @@ Run the bundled Python demo:
 python -m app.app
 ```
 
+The CLI defaults to `--environment uat`. UAT targets must be inside `QA_AGENT_UAT_ROOT`,
+which defaults to the repository's `workspace/` directory. Set that variable in the
+trusted agent environment to use a different UAT project root. Selecting
+`--environment production` is currently rejected before project configuration is loaded
+or the agent workflow starts.
+
 Choose another project directory with:
 
 ```powershell

@@ -121,6 +121,7 @@ def test_cli_shows_diff_and_applies_only_after_approval(
     }
     monkeypatch.setattr(agent_module, "run_agent", lambda _: json.dumps(result))
     monkeypatch.setattr(app_module, "load_dotenv", lambda *_: None)
+    monkeypatch.setenv("QA_AGENT_UAT_ROOT", str(tmp_path))
     monkeypatch.setattr(sys, "argv", ["qa-agent", "--project-path", str(tmp_path)])
     monkeypatch.setenv("GROQ_API_KEY", "test-key")
 
@@ -139,3 +140,41 @@ def test_cli_shows_diff_and_applies_only_after_approval(
     assert "+value = 2" in output
     assert f'"approval": "{expected_approval}"' in output
     assert source.read_text(encoding="utf-8") == expected_content
+
+
+def test_cli_rejects_production_before_loading_or_running_agent(monkeypatch):
+    monkeypatch.setattr(
+        app_module,
+        "load_dotenv",
+        lambda *_: pytest.fail("Production mode must stop before loading project configuration."),
+    )
+    monkeypatch.setattr(
+        agent_module,
+        "run_agent",
+        lambda _: pytest.fail("Production mode must not start the agent workflow."),
+    )
+    monkeypatch.setattr(sys, "argv", ["qa-agent", "--environment", "production"])
+
+    with pytest.raises(SystemExit) as error:
+        app_module.main()
+
+    assert error.value.code == 2
+
+
+def test_cli_rejects_project_outside_configured_uat_root(monkeypatch, tmp_path):
+    allowed_root = tmp_path / "uat"
+    allowed_root.mkdir()
+    outside_project = tmp_path / "other-project"
+    outside_project.mkdir()
+    monkeypatch.setattr(app_module, "load_dotenv", lambda *_: None)
+    monkeypatch.setenv("QA_AGENT_UAT_ROOT", str(allowed_root))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["qa-agent", "--project-path", str(outside_project)],
+    )
+
+    with pytest.raises(SystemExit) as error:
+        app_module.main()
+
+    assert error.value.code == 2
