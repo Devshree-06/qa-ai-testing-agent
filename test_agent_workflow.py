@@ -6,7 +6,13 @@ import pytest
 
 from app import app as app_module
 from agent import agent as agent_module
-from agent.agent import FailureAnalysis, PatchSuggestion, run_agent
+from agent.agent import (
+    FailureAnalysis,
+    PatchSuggestion,
+    _MAX_ANALYSIS_CONTEXT_CHARS,
+    _build_failure_context,
+    run_agent,
+)
 
 
 def test_failure_uses_one_analysis_call_and_returns_approval_without_applying(tmp_path, monkeypatch):
@@ -83,6 +89,36 @@ def test_no_framework_routes_directly_to_final_result(monkeypatch, tmp_path):
 
     assert result["status"] == "no_framework"
     assert "No supported test framework" in result["message"]
+
+
+def test_analysis_context_is_bounded_and_reports_omitted_details():
+    framework_results = [{"framework": "pytest", "tests_discovered": 12}]
+    failed_tests = [
+        {
+            "framework": "pytest",
+            "test_path": f"tests/test_case_{index}.py",
+            "exit_code": 1,
+            "stdout": "failure output " * 1000,
+            "stderr": "error output " * 1000,
+            "test_source": "assert False\n" * 1000,
+        }
+        for index in range(12)
+    ]
+    source_files = [
+        {"file_path": f"src/module_{index}.py", "content": "source " * 2000}
+        for index in range(12)
+    ]
+
+    serialized = _build_failure_context(framework_results, failed_tests, source_files)
+    context = json.loads(serialized)
+
+    assert len(serialized) <= _MAX_ANALYSIS_CONTEXT_CHARS
+    assert context["failure_count"] == 12
+    assert context["omitted_failure_count"] > 0
+    assert context["omitted_source_file_count"] > 0
+    assert all(len(item["stdout"]) <= 1500 for item in context["failures"])
+    assert all(len(item["test_source"]) <= 3000 for item in context["failures"])
+    assert all(len(item["content"]) <= 4000 for item in context["source_files"])
 
 
 @pytest.mark.parametrize(

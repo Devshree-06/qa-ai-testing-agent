@@ -27,9 +27,14 @@ _IGNORED_SOURCE_DIRECTORIES = {
     "__tests__",
 }
 _SOURCE_EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx"}
-_MAX_SOURCE_FILES = 12
-_MAX_SOURCE_CONTEXT_CHARS = 24000
+_MAX_SOURCE_FILES = 6
+_MAX_SOURCE_CONTEXT_CHARS = 12000
 _MAX_FAILURE_OUTPUT_CHARS = 10000
+_MAX_ANALYSIS_CONTEXT_CHARS = 20000
+_MAX_DETAILED_FAILURES = 3
+_MAX_FAILURE_STREAM_CHARS = 1500
+_MAX_TEST_SOURCE_CHARS = 3000
+_MAX_SOURCE_SNIPPET_CHARS = 4000
 
 
 class PatchSuggestion(BaseModel):
@@ -99,6 +104,57 @@ def _collect_source_context(project_dir: Path) -> list[dict[str, str]]:
                 return source_files
 
     return source_files
+
+
+def _build_failure_context(
+    framework_results: list[dict],
+    failed_tests: list[dict],
+    source_files: list[dict[str, str]],
+) -> str:
+    context = {
+        "frameworks": [
+            {
+                "framework": result["framework"],
+                "tests_discovered": result["tests_discovered"],
+            }
+            for result in framework_results
+        ],
+        "failure_count": len(failed_tests),
+        "omitted_failure_count": len(failed_tests),
+        "failures": [],
+        "omitted_source_file_count": len(source_files),
+        "source_files": [],
+    }
+
+    for failure in failed_tests[:_MAX_DETAILED_FAILURES]:
+        compact_failure = {
+            "framework": failure["framework"],
+            "test_path": failure["test_path"],
+            "exit_code": failure["exit_code"],
+            "stdout": failure.get("stdout", "")[-_MAX_FAILURE_STREAM_CHARS:],
+            "stderr": failure.get("stderr", "")[-_MAX_FAILURE_STREAM_CHARS:],
+            "test_source": failure.get("test_source", "")[:_MAX_TEST_SOURCE_CHARS],
+        }
+        context["failures"].append(compact_failure)
+        serialized = json.dumps(context, separators=(",", ":"))
+        if len(serialized) > _MAX_ANALYSIS_CONTEXT_CHARS:
+            context["failures"].pop()
+            break
+        context["omitted_failure_count"] -= 1
+
+    for source_file in source_files:
+        compact_source = {
+            "file_path": source_file["file_path"],
+            "content": source_file["content"][:_MAX_SOURCE_SNIPPET_CHARS],
+        }
+        context["source_files"].append(compact_source)
+        serialized = json.dumps(context, separators=(",", ":"))
+        if len(serialized) > _MAX_ANALYSIS_CONTEXT_CHARS:
+            context["source_files"].pop()
+            break
+        context["omitted_source_file_count"] -= 1
+
+    return json.dumps(context, separators=(",", ":"))
 
 
 def _run_tests(project_dir: Path) -> tuple[list[dict], list[dict]]:
@@ -186,12 +242,11 @@ def _route_after_tests(state: AgentState) -> str:
 
 def _analyze_failures_node(state: AgentState) -> AgentState:
     project_dir = Path(state["project_path"]).resolve(strict=True)
-    failure_context = json.dumps({
-        "project_path": str(project_dir),
-        "test_results": state["framework_results"],
-        "failures": state["failed_tests"],
-        "source_files": _collect_source_context(project_dir),
-    }, indent=2)
+    failure_context = _build_failure_context(
+        state["framework_results"],
+        state["failed_tests"],
+        _collect_source_context(project_dir),
+    )
 
     try:
         analysis = _analyze_failures(failure_context)
