@@ -10,6 +10,20 @@ from dotenv import load_dotenv
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
 
+
+def _format_proposal_diff(proposal: "PatchProposal") -> str:
+    diff_lines = difflib.unified_diff(
+        proposal.old_content.splitlines(keepends=True),
+        proposal.new_content.splitlines(keepends=True),
+        fromfile=f"a/{proposal.file_path}",
+        tofile=f"b/{proposal.file_path}",
+    )
+    return "".join(
+        line if line.endswith(("\n", "\r")) else f"{line}\n"
+        for line in diff_lines
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the AI QA agent on one project.")
     parser.add_argument(
@@ -59,12 +73,7 @@ def main() -> None:
         proposal_data = result["proposal"]
         proposal = PatchProposal(**proposal_data)
         print(result.get("summary", "Patch proposal"))
-        print("".join(difflib.unified_diff(
-            proposal.old_content.splitlines(keepends=True),
-            proposal.new_content.splitlines(keepends=True),
-            fromfile=f"a/{proposal.file_path}",
-            tofile=f"b/{proposal.file_path}",
-        )), end="")
+        print(_format_proposal_diff(proposal), end="")
         try:
             approved = input("Apply this patch to the project? [y/N]: ").strip().casefold() in {"y", "yes"}
         except EOFError:

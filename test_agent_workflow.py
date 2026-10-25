@@ -13,6 +13,7 @@ from agent.agent import (
     _build_failure_context,
     run_agent,
 )
+from agent.guardrails import PatchProposal
 
 
 def test_failure_uses_one_analysis_call_and_returns_approval_without_applying(tmp_path, monkeypatch):
@@ -57,6 +58,19 @@ def test_failure_uses_one_analysis_call_and_returns_approval_without_applying(tm
     assert result["decision"] == "REQUIRE_APPROVAL"
     assert result["framework_decisions"][0]["validation_passed"] is True
     assert source.read_text(encoding="utf-8") == "def increment(value):\n    return value\n"
+
+
+def test_proposal_diff_separates_lines_without_trailing_newlines():
+    proposal = PatchProposal(
+        file_path="src/math_utils.py",
+        old_content="def add(left, right):\n    return left - right",
+        new_content="def add(left, right):\n    return left + right",
+        rationale="Use addition.",
+    )
+
+    formatted_diff = app_module._format_proposal_diff(proposal)
+
+    assert "-    return left - right\n+    return left + right\n" in formatted_diff
 
 
 def test_passing_tests_skip_llm_analysis(monkeypatch, tmp_path):

@@ -1,0 +1,6 @@
+{
+  "normal_bug_paths": [
+    "src/**"
+  ],
+  "business_requirement_paths": []
+}

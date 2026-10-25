@@ -1,0 +1,22 @@
+services:
+  qa-agent:
+    build: .
+    stdin_open: true
+    tty: true
+    environment:
+      QA_AGENT_UAT_ROOT: /workspace
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
+      QA_AGENT_TEST_ENV_ALLOWLIST: ${QA_AGENT_TEST_ENV_ALLOWLIST:-}
+    volumes:
+      - type: bind
+        source: ${QA_AGENT_UAT_ROOT:-./workspace}
+        target: /workspace
+    command:
+      - python
+      - -m
+      - app.app
+      - --environment
+      - uat
+      - --project-path
+      - ${QA_AGENT_PROJECT_PATH:-/workspace/demo-project}

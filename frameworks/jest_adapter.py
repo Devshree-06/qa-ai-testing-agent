@@ -38,13 +38,13 @@ class JestAdapter(TestFramework):
 
         project_dir = Path(project_path).resolve()
 
-        npx = shutil.which("npx.cmd")
+        node = shutil.which("node")
 
-        if not npx:
+        if not node:
             return {
                 "exit_code" : 1,
                 "stdout" :"",
-                "stderr" : "npx.cmd not found"
+                "stderr" : "node executable not found"
             }
 
         local_jest = project_dir / "node_modules" / "jest" / "bin" / "jest.js"
@@ -57,7 +57,7 @@ class JestAdapter(TestFramework):
 
         try:
             result = subprocess.run(
-                [npx,"jest",test_path],
+                [node, str(local_jest), test_path],
                 cwd=project_dir,
                 env=build_test_environment(),
                 capture_output=True,
